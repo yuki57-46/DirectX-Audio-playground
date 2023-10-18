@@ -9,6 +9,6 @@ XAudio2を使ってどのようなことが出来るのかを試すためのリ�
 - Visual Studio 2022 Community
 - Windows 11 Pro 22H2
 - Windows SDK 10.0.22621.0
-- Clang-cl
+- MSVC++ 2022 v143 or clang-cl 16.0.5 or later
 - C++ latest
 - C 17
