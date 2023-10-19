@@ -7,6 +7,7 @@
 #include <Windows.h>
 #include <iostream>
 #include <string>
+#include "FileLoader.hpp"
 
 #pragma comment(lib, "winmm.lib")
 
@@ -15,6 +16,9 @@ const int WINDOW_HEIGHT = 480;
 
 // プロトタイプ宣言
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+// インスタンス
+FileLoader g_fileLoader;
 
 // メイン関数
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -60,10 +64,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
     
+
+
+    // ボタンを作成
+    HWND hButton = CreateWindow(
+		"BUTTON", "ファイルを開く", // ウィンドウクラス名, ウィンドウ名
+		WS_CHILD | WS_VISIBLE, // ウィンドウスタイル
+		0, 0, 100, 30, // x, y, 幅, 高さ
+		hWnd, (HMENU)1, hInstance, NULL // 親ウィンドウのハンドル, メニューハンドル, インスタンスハンドル, 作成したウィンドウのハンドル
+	);
+
     //--- 各種初期化処理 ---//
     timeBeginPeriod(1); // 分解能を1msに設定
     //HRESULT hr;
 
+    // ファイル選択ダイアログのインスタンスを作成
+    //g_fileLoader.OpenFile(hWnd);
 
     //--- メッセージループ ---//
     MSG message;
@@ -92,7 +108,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             if(nowTime - oldTime >= 1000 / 60) // 1/60秒経過していたら
             {
                 //--- 更新処理 ---//
-
+                // ドロップされたファイルの処理
+                if(message.message == WM_DROPFILES)
+                {
+                    g_fileLoader.LoadDropFile(hWnd, (HDROP)message.wParam);
+                }
                 //--- 描画処理 ---//
 
 
@@ -116,6 +136,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch(msg)
     {
+    case WM_CREATE: // ウィンドウが作成されたとき
+        // ファイルドロップを有効にする
+        DragAcceptFiles(hWnd, TRUE);
+        break;
+    case  WM_DROPFILES: // ファイルがドロップされたとき
+        g_fileLoader.LoadDropFile(hWnd, (HDROP)wParam);
+        break;
+    case WM_COMMAND: // コントロールからの通知
+        switch(LOWORD(wParam))
+        {
+        case 1: // ボタンが押されたとき
+            // ファイル選択ダイアログを開く
+            g_fileLoader.OpenFile(hWnd);
+            break;
+        }
     case WM_DESTROY: // ウィンドウが破棄されたとき
 		PostQuitMessage(0); // 終了メッセージを送る
 		break;
