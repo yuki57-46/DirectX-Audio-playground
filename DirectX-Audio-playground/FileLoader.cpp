@@ -25,6 +25,7 @@ FileLoader::~FileLoader()
 void FileLoader::OpenFile(HWND hWnd)
 {
     IFileOpenDialog* pFileOpen; // ファイル選択ダイアログのインスタンス
+    pFileOpen = NULL;
     // ファイル選択ダイアログのインスタンスを作成
     HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, (void**)&pFileOpen);
 
@@ -90,7 +91,7 @@ void FileLoader::LoadDropFile(HWND hWnd, HDROP hDrop)
         // filePathにはドロップされたファイルのパスが格納されている
         // ここでファイルの処理を行う
         // ファイルパスを表示
-        MessageBoxA(hWnd, lpFilePath, "ドロップされたファイルパス", MB_OK);
+        MessageBoxA(hWnd, lpFilePath, OpenFileWindowTitle, MB_OK);
 
         delete[] filePath; // メモリ解放
     }  

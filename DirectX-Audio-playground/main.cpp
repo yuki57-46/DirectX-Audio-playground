@@ -1,4 +1,4 @@
-// main.cpp 
+﻿// main.cpp 
 //
 // DirectX 11/12 Audio Playground
 // DirectX 11/12 のサウンドシステムを実験する
@@ -54,6 +54,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         HWND_DESKTOP, NULL, hInstance, NULL // 親ウィンドウのハンドル, メニューハンドル, インスタンスハンドル, 作成したウィンドウのハンドル
     );
 
+    // ウィンドウの作成に失敗した場合
     if(hWnd == NULL)
     {
         MessageBoxEx(NULL, "(ウィンドウの作成に失敗しました。)", "(エラー)", MB_OK, NULL);
@@ -67,12 +68,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
     // ボタンを作成
-    HWND hButton = CreateWindow(
-		"BUTTON", "ファイルを開く", // ウィンドウクラス名, ウィンドウ名
-		WS_CHILD | WS_VISIBLE, // ウィンドウスタイル
-		0, 0, 100, 30, // x, y, 幅, 高さ
-		hWnd, (HMENU)1, hInstance, NULL // 親ウィンドウのハンドル, メニューハンドル, インスタンスハンドル, 作成したウィンドウのハンドル
-	);
+    //HWND hButton = 
+     CreateWindowA(TEXT("BUTTON"), TEXT("ファイルを開く"), // ウィンドウクラス名, ウィンドウ名
+        WS_CHILD | WS_VISIBLE, // ウィンドウスタイル
+        210, 240, 200, 30, // x, y, 幅, 高さ
+        hWnd, (HMENU)1, hInstance, NULL // 親ウィンドウのハンドル, メニューハンドル, インスタンスハンドル, 作成したウィンドウのハンドル
+    );
 
     //--- 各種初期化処理 ---//
     timeBeginPeriod(1); // 分解能を1msに設定
@@ -151,6 +152,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_fileLoader.OpenFile(hWnd);
             break;
         }
+        break;
     case WM_DESTROY: // ウィンドウが破棄されたとき
 		PostQuitMessage(0); // 終了メッセージを送る
 		break;
