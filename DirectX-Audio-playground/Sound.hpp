@@ -29,6 +29,9 @@ public:
     void SetPitch(IXAudio2SourceVoice* pSourceVoice, float pitch);
     // サウンドの
     
+private:
+    IXAudio2* m_pXAudio2;
+    IXAudio2MasteringVoice* m_pMasteringVoice;
 };
 
 

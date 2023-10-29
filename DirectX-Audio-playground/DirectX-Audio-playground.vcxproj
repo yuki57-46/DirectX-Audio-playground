@@ -134,9 +134,11 @@
   <ItemGroup>
     <ClCompile Include="FileLoader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Sound.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FileLoader.hpp" />
+    <ClInclude Include="Sound.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
