@@ -32,6 +32,35 @@ public:
 private:
     IXAudio2* m_pXAudio2;
     IXAudio2MasteringVoice* m_pMasteringVoice;
+    SoundList m_SoundList;
+
+public:
+    struct SoundData    
+    {
+        WAVEFORMATEX    format; // WAVフォーマット
+        BYTE            *pBuffer; // サウンドデータ
+        DWORD           bufSize; // データサイズ
+        XAUDIO2_BUFFER  sound;
+    };
+    
+    struct MP3FormatInfo
+    {
+        DWORD offset;   // オフセット
+        DWORD dataSize; // データサイズ
+    };
+
+    struct MP3FrameInfo
+    {
+        BYTE channel;  // チャンネル数
+        BYTE padding; // パディング
+        DWORD sampleRate; // サンプルレート
+        DWORD bitRate; // ビットレート
+        DWORD frameSize; // フレームサイズ
+    };
+    
+
+    
+    
 };
 
 
