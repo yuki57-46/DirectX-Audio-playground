@@ -161,7 +161,10 @@ XAUDIO2_BUFFER* Sound::LoadSound(const char* file, bool loop)
 	return &it->second.sound; // サウンドバッファを返す
 }
 
-
+/**
+ * @brief サウンド再生
+ * @param[in] pSound サウンドバッファ
+ */
 IXAudio2SourceVoice* Sound::PlaySound(XAUDIO2_BUFFER* pSound)
 {
 	return nullptr;
