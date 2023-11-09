@@ -105,9 +105,60 @@ void Sound::Uninit()
 	
 }
 
+/**
+ * @brief サウンドデータの読み込み
+ * @param[in] file 読み込むファイル名
+ * @param[in] loop ループ再生するかどうか
+ * @return サウンドバッファ
+ */
 XAUDIO2_BUFFER* Sound::LoadSound(const char* file, bool loop)
 {
-	return nullptr;
+	SoundData data; // サウンドデータ
+
+	SoundList::iterator it = m_SoundList.find(file); // サウンドリストからファイル名を検索
+	if (it != m_SoundList.end()) // 検索結果が見つかった場合
+	{
+		// すでに読み込まれていたら、
+		return &it->second.sound; // サウンドバッファを返す
+	}
+
+	// 拡張子ごとに読み込み処理
+	HRESULT hr = E_FAIL;
+	LPSTR ext = PathFindExtension(file); // ファイルパスから拡張子を取得
+	if (ext != NULL)
+	{
+		if(memcmp(ext, ".wav", 4) == CMP_MATCH) // wavファイルの場合
+		{
+			hr = LoadWave(file, &data); // wavファイルの読み込み
+		} 
+		else if (memcmp(ext, "mp3", 4) == CMP_MATCH) // mp3ファイルの場合
+		{
+			hr = LoadMP3(file, &data); // mp3ファイルの読み込み
+		}
+	}
+	if(FAILED(hr))
+	{
+		return NULL; // 読み込み失敗
+	}
+
+	// サウンドバッファの作成
+	ZeroMemory(&data.sound, sizeof(data.sound)); // サウンドバッファの初期化
+	// サウンドデータのバイト数
+	data.sound.AudioBytes = data.bufSize;
+	// サウンドデータの先頭アドレス
+	data.sound.pAudioData = data.pBuffer;
+	// ループ再生するかどうか
+	if (loop == true)
+	{
+		data.sound.LoopCount = XAUDIO2_LOOP_INFINITE; // 無限ループ
+	}
+	data.sound.Flags = XAUDIO2_END_OF_STREAM; // 終端まで再生したら停止
+
+	// サウンドリストに追加
+	m_SoundList.insert(SoundKey(file, data));
+	it = m_SoundList.find(file); // サウンドリストからファイル名を検索
+
+	return &it->second.sound; // サウンドバッファを返す
 }
 
 
