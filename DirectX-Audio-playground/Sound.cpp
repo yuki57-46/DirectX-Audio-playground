@@ -211,8 +211,31 @@ IXAudio2SourceVoice* Sound::PlaySound(XAUDIO2_BUFFER* pSound)
 	return pSource;
 }
 
-void Sound::StopSound(IXAudio2SourceVoice* pSourceVoice)
+IXAudio2SourceVoice* Sound::StopSound(XAUDIO2_BUFFER* pSound)
 {
+	HRESULT hr;	// 処理結果
+	IXAudio2SourceVoice* pSource;	// ソース
+
+	// 停止させるデータを探索
+	SoundList::iterator soundIt = m_SoundList.begin(); // サウンドリストの先頭を取得
+	while (soundIt != m_SoundList.end()) // サウンドリストの末尾までループ
+	{
+		if (&soundIt->second.sound == pSound) // サウンドバッファが一致した場合
+		{
+			break; // ループを抜ける
+		}
+		++soundIt; // 次のサウンドデータへ
+	}
+	if (soundIt == m_SoundList.end()) // サウンドバッファが見つからなかった場合
+	{
+		// 該当のデータなし
+		return NULL;
+	}
+
+	// 停止
+	pSource->Stop();
+
+	return pSource;	
 }
 
 void Sound::PauseSound(IXAudio2SourceVoice* pSourceVoice)

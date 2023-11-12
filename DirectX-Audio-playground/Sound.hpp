@@ -18,7 +18,7 @@ public:
     #undef PlaySound
     IXAudio2SourceVoice* PlaySound(XAUDIO2_BUFFER* pSound);
     // サウンドの停止
-    void StopSound(IXAudio2SourceVoice* pSourceVoice);
+    IXAudio2SourceVoice* StopSound(XAUDIO2_BUFFER* pSound);
     // サウンドの一時停止
     void PauseSound(IXAudio2SourceVoice* pSourceVoice);
     // サウンドの再開
