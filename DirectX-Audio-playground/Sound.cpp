@@ -167,6 +167,47 @@ XAUDIO2_BUFFER* Sound::LoadSound(const char* file, bool loop)
  */
 IXAudio2SourceVoice* Sound::PlaySound(XAUDIO2_BUFFER* pSound)
 {
+	HRESULT hr;	// 処理結果
+	IXAudio2SourceVoice* pSource;	// ソース
+
+	// 再生するデータを探索
+	SoundList::iterator soundIt = m_SoundList.begin(); // サウンドリストの先頭を取得
+	while(soundIt != m_SoundList.end()) // サウンドリストの末尾までループ
+	{
+		if (&soundIt->second.sound == pSound) // サウンドバッファが一致した場合
+		{
+			break; // ループを抜ける
+		}
+		++soundIt; // 次のサウンドデータへ
+	}
+	if (soundIt == m_SoundList.end()) // サウンドバッファが見つからなかった場合
+	{
+		// 該当のデータなし
+		return NULL;
+	}
+
+	// フォーマットを指定し、ソースを作成
+	/*------------
+	* WAVEFORMATEX 役割: WAVフォーマットを扱う
+	* wFormatTag 役割: フォーマットタグ
+	* nChannels 役割: チャンネル数
+	  * 1: モノラル
+	  *	2: ステレオ
+	* wBitsPerSample 役割: 1 サンプルあたりのビット数
+	  * 8: 8bit ... 128を無音とする 0~255
+	  * 16: 16bit ... 0を無音とする -32768~32767
+	* nSamplesPerSec 役割: サンプリングレート (1秒あたりのサンプリング数 : 単位: Hz)
+	*-------------*/
+	hr = m_pXAudio2->CreateSourceVoice(&pSource, &soundIt->second.format);
+	if (FAILED(hr))
+	{
+		return NULL;
+	}
+	pSource->SubmitSourceBuffer(pSound); // ソースにバッファを設定
+
+	// 再生
+	pSource->Start();
+	
 	return nullptr;
 }
 
