@@ -208,7 +208,7 @@ IXAudio2SourceVoice* Sound::PlaySound(XAUDIO2_BUFFER* pSound)
 	// 再生
 	pSource->Start();
 	
-	return nullptr;
+	return pSource;
 }
 
 void Sound::StopSound(IXAudio2SourceVoice* pSourceVoice)
