@@ -41,7 +41,7 @@ typedef std::pair<std::string, Sound::SoundData> SoundKey;
 // SoundList 役割: サウンドデータを扱う
 typedef std::map<std::string, Sound::SoundData> SoundList;
 
-
+SoundList g_soundList; // サウンドリスト
 
 
 
@@ -82,10 +82,10 @@ HRESULT Sound::Init()
  */
 void Sound::Uninit()
 {
-	SoundList::iterator soundIt = m_SoundList.begin(); // サウンドリストの先頭を取得
+	SoundList::iterator soundIt = g_soundList.begin(); // サウンドリストの先頭を取得
 
 	// サウンドリストの末尾までループ
-	while (soundIt != m_SoundList.end())
+	while (soundIt != g_soundList.end())
 	{
 		delete[] soundIt->second.pBuffer; // サウンドデータの解放
 		soundIt++; // 次のサウンドデータへ
@@ -115,8 +115,8 @@ XAUDIO2_BUFFER* Sound::LoadSound(const char* file, bool loop)
 {
 	SoundData data; // サウンドデータ
 
-	SoundList::iterator it = m_SoundList.find(file); // サウンドリストからファイル名を検索
-	if (it != m_SoundList.end()) // 検索結果が見つかった場合
+	SoundList::iterator it = g_soundList.find(file); // サウンドリストからファイル名を検索
+	if (it != g_soundList.end()) // 検索結果が見つかった場合
 	{
 		// すでに読み込まれていたら、
 		return &it->second.sound; // サウンドバッファを返す
@@ -155,8 +155,8 @@ XAUDIO2_BUFFER* Sound::LoadSound(const char* file, bool loop)
 	data.sound.Flags = XAUDIO2_END_OF_STREAM; // 終端まで再生したら停止
 
 	// サウンドリストに追加
-	m_SoundList.insert(SoundKey(file, data));
-	it = m_SoundList.find(file); // サウンドリストからファイル名を検索
+	g_soundList.insert(SoundKey(file, data));
+	it = g_soundList.find(file); // サウンドリストからファイル名を検索
 
 	return &it->second.sound; // サウンドバッファを返す
 }
@@ -171,8 +171,8 @@ IXAudio2SourceVoice* Sound::PlaySound(XAUDIO2_BUFFER* pSound)
 	IXAudio2SourceVoice* pSource;	// ソース
 
 	// 再生するデータを探索
-	SoundList::iterator soundIt = m_SoundList.begin(); // サウンドリストの先頭を取得
-	while(soundIt != m_SoundList.end()) // サウンドリストの末尾までループ
+	SoundList::iterator soundIt = g_soundList.begin(); // サウンドリストの先頭を取得
+	while(soundIt != g_soundList.end()) // サウンドリストの末尾までループ
 	{
 		if (&soundIt->second.sound == pSound) // サウンドバッファが一致した場合
 		{
@@ -180,7 +180,7 @@ IXAudio2SourceVoice* Sound::PlaySound(XAUDIO2_BUFFER* pSound)
 		}
 		++soundIt; // 次のサウンドデータへ
 	}
-	if (soundIt == m_SoundList.end()) // サウンドバッファが見つからなかった場合
+	if (soundIt == g_soundList.end()) // サウンドバッファが見つからなかった場合
 	{
 		// 該当のデータなし
 		return NULL;
@@ -217,8 +217,8 @@ IXAudio2SourceVoice* Sound::StopSound(XAUDIO2_BUFFER* pSound)
 	IXAudio2SourceVoice* pSource;	// ソース
 
 	// 停止させるデータを探索
-	SoundList::iterator soundIt = m_SoundList.begin(); // サウンドリストの先頭を取得
-	while (soundIt != m_SoundList.end()) // サウンドリストの末尾までループ
+	SoundList::iterator soundIt = g_soundList.begin(); // サウンドリストの先頭を取得
+	while (soundIt != g_soundList.end()) // サウンドリストの末尾までループ
 	{
 		if (&soundIt->second.sound == pSound) // サウンドバッファが一致した場合
 		{
@@ -226,7 +226,7 @@ IXAudio2SourceVoice* Sound::StopSound(XAUDIO2_BUFFER* pSound)
 		}
 		++soundIt; // 次のサウンドデータへ
 	}
-	if (soundIt == m_SoundList.end()) // サウンドバッファが見つからなかった場合
+	if (soundIt == g_soundList.end()) // サウンドバッファが見つからなかった場合
 	{
 		// 該当のデータなし
 		return NULL;
@@ -337,11 +337,64 @@ HRESULT LoadWave(const char* file, Sound::SoundData* pData)
 	return S_OK;
 }
 
+/**
+ * @brief mp3ファイルの読み込み
+ * @param[in] file 読み込むファイル
+ * @param[out] pData サウンドデータ
+ * @return 処理結果(success: S_OK, failed: E_FAIL)
+ */
 HRESULT LoadMP3(const char* file, Sound::SoundData* pData)
 {
-	return E_NOTIMPL;
+	HANDLE hFile; // ファイルポインタ
+	DWORD readSize; // 読み込みサイズ
+
+	// 読み込み
+	hFile = CreateFile(
+		file, // ファイル名	
+		GENERIC_READ, // アクセスモード(読み込み)
+		0, // 共有モード(なし)
+		NULL, // セキュリティ記述子(なし)
+		OPEN_EXISTING, // 作成方法(既存のファイルを開く)
+		FILE_ATTRIBUTE_NORMAL, // ファイル属性(通常のファイル)
+		NULL // テンプレートファイルのハンドル(なし)
+	);
+	if (hFile == INVALID_HANDLE_VALUE)	// ファイルが開けなかった場合
+	{
+		return E_FAIL; // 読み込み失敗
+	}
+
+	// ファイルフォーマットの読み込み
+	Sound::MP3FormatInfo format; // フォーマット
+	readSize = ReadMP3Format(hFile, &format); // フォーマットの読み込み
+	if (readSize == 0) // 読み込み失敗
+	{
+		return E_FAIL; // 読み込み失敗
+	}
+
+	// サウンドフレームヘッダの読み込み
+	Sound::MP3FrameInfo frame; // フレーム
+	readSize = ReadMP3FrameHeader(hFile, format.offset, &frame); // フレームヘッダの読み込み
+	if (readSize == 0) // 読み込み失敗
+	{
+		return E_FAIL; // 読み込み失敗
+	}
+
+	// サウンドデータの読み込み
+	readSize = ReadMP3Data(hFile, format.offset, format.dataSize, &frame, pData); // サウンドデータの読み込み
+	if (readSize == 0) // 読み込み失敗
+	{
+		return E_FAIL; // 読み込み失敗
+	}
+
+	return S_OK; // 読み込み成功
 }
 
+/**
+ * @brief MP3フォーマットチェック
+ * @param[in] hFile ファイルハンドル
+ * @param[out] pFormat フォーマット情報
+ * @return データサイズ
+ */
 DWORD ReadMP3Format(HANDLE hFile, Sound::MP3FormatInfo* pFormat)
 {
 	return 0;

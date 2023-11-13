@@ -30,9 +30,10 @@ public:
     // サウンドの
     
 private:
+
     IXAudio2* m_pXAudio2;
     IXAudio2MasteringVoice* m_pMasteringVoice;
-    SoundList m_SoundList;
+
 
 public:
     struct SoundData    
