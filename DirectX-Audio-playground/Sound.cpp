@@ -331,6 +331,9 @@ HRESULT LoadWave(const char* file, Sound::SoundData* pData)
 		mmioClose(hMmio, 0); // ファイルを閉じる
 		return E_FAIL;
 	}
+
+	// ファイルを閉じる
+	mmioClose(hMmio, 0);
 	return S_OK;
 }
 
