@@ -253,3 +253,103 @@ void Sound::SetVolume(IXAudio2SourceVoice* pSourceVoice, float volume)
 void Sound::SetPitch(IXAudio2SourceVoice* pSourceVoice, float pitch)
 {
 }
+
+/**
+ * @brief wavファイルの読み込み
+ * @param[in] file 読み込むファイル
+ * @param[out] pData サウンドデータ
+ * @return 処理結果(success: S_OK, failed: E_FAIL) 
+*/
+HRESULT LoadWave(const char* file, Sound::SoundData* pData)
+{
+	HMMIO hMmio = NULL; // ファイルハンドル
+	MMIOINFO mmioInfo; // ファイル情報
+	MMRESULT mmRes; // ファイル読み込み結果
+
+	// WAVEファイルオープン
+	memset(&mmioInfo, 0, sizeof(MMIOINFO)); // ファイル情報の初期化
+	hMmio = mmioOpen(const_cast<char*>(file), &mmioInfo, MMIO_READ); // ファイルを開く
+	if (hMmio == NULL)
+	{
+		return E_FAIL;
+	}
+
+	// RIFFチャンク検索
+	MMCKINFO riffChunk; // RIFFチャンク
+	riffChunk.fccType = mmioFOURCC('W', 'A', 'V', 'E'); // WAVEフォーマット
+	mmRes = mmioDescend(hMmio, &riffChunk, NULL, MMIO_FINDRIFF); // RIFFチャンクを検索
+	if (mmRes != MMSYSERR_NOERROR)
+	{
+		mmioClose(hMmio, 0); // ファイルを閉じる
+		return E_FAIL;
+	}
+
+	// フォーマットチャンク検索
+	MMCKINFO formatChunk; // フォーマットチャンク
+	formatChunk.ckid = mmioFOURCC('f', 'm', 't', ' '); // フォーマットチャンク
+	mmRes = mmioDescend(hMmio, &formatChunk, &riffChunk, MMIO_FINDCHUNK); // フォーマットチャンクを検索
+	if (mmRes != MMSYSERR_NOERROR)
+	{
+		mmioClose(hMmio, 0); // ファイルを閉じる
+		return E_FAIL;
+	}
+
+	// フォーマット取得
+	DWORD formatSize = formatChunk.cksize; // フォーマットサイズ
+	DWORD size = mmioRead(hMmio, reinterpret_cast<HPSTR>(&pData->format), formatSize); // フォーマットを読み込む
+	if (size != formatSize)
+	{
+		mmioClose(hMmio, 0); // ファイルを閉じる
+		return E_FAIL;
+	}
+
+	// RIFFチャンクに移動
+	mmioAscend(hMmio, &formatChunk, 0); // フォーマットチャンクに移動
+
+	// データチャンク検索
+	MMCKINFO dataChunk; // データチャンク
+	dataChunk.ckid = mmioFOURCC('d', 'a', 't', 'a'); // データチャンク
+	mmRes = mmioDescend(hMmio, &dataChunk, &riffChunk, MMIO_FINDCHUNK); // データチャンクを検索
+	if (mmRes != MMSYSERR_NOERROR)
+	{
+		mmioClose(hMmio, 0); // ファイルを閉じる
+		return E_FAIL;
+	}
+
+	// データサイズ取得
+	pData->bufSize = dataChunk.cksize; // データサイズ
+	pData->pBuffer = new BYTE[pData->bufSize]; // データサイズ分のメモリを確保
+	size = mmioRead(hMmio, reinterpret_cast<HPSTR>(pData->pBuffer), pData->bufSize); // データを読み込む
+	if (size != dataChunk.cksize)
+	{
+		pData->bufSize = 0; // データサイズを0にする
+		if (pData->pBuffer != NULL)
+		{
+			delete[] pData->pBuffer; // メモリの解放
+			pData->pBuffer = NULL;
+		}
+		mmioClose(hMmio, 0); // ファイルを閉じる
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT LoadMP3(const char* file, Sound::SoundData* pData)
+{
+	return E_NOTIMPL;
+}
+
+DWORD ReadMP3Format(HANDLE hFile, Sound::MP3FormatInfo* pFormat)
+{
+	return 0;
+}
+
+DWORD ReadMP3FrameHeader(HANDLE hFile, DWORD seek, Sound::MP3FrameInfo* pFrame)
+{
+	return 0;
+}
+
+DWORD ReadMP3Data(HANDLE hFile, DWORD seek, DWORD size, Sound::MP3FrameInfo* pFrame, Sound::SoundData* pData)
+{
+	return 0;
+}
