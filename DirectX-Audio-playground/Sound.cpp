@@ -397,7 +397,70 @@ HRESULT LoadMP3(const char* file, Sound::SoundData* pData)
  */
 DWORD ReadMP3Format(HANDLE hFile, Sound::MP3FormatInfo* pFormat)
 {
-	return 0;
+	DWORD readSize; // 読み込みサイズ
+
+	// MP3ファイルサイズの取得
+	DWORD fileSize = GetFileSize(hFile, NULL); // ファイルサイズの取得
+
+	// ヘッダー/フッターの有無を確認
+	/*-------
+	* ID3v1
+	* -末尾にタグがある or タグなし
+	* [MP3データ]
+	* 	or
+	* 	[MP3データ]["TAG"(3byte)][タグ情報(125byte)]
+	* ID3v2
+	* -先頭にタグがある
+	*  ["ID3"(3byte)][バージョン(2byte)][フラグ(1byte)][タグサイズ(4byte)][拡張ヘッダ][MP3データ]
+	*--------*/
+	const BYTE ID3V2_HEADER_SIZE = 10; // ID3v2ヘッダサイズ
+	BYTE header[ID3V2_HEADER_SIZE]; // ヘッダー情報
+	ReadFile(hFile, header, sizeof(header), &readSize, NULL); // ヘッダー情報の読み込み
+
+	// タグをチェックし、MP3データの位置、サイズを計算
+	const char *ID3V1_TAG = "TAG"; // ID3v1タグ
+	const char *ID3V2_TAG = "ID3"; // ID3v2タグ
+	const BYTE MP3_TAG_SIZE = 3; // MP3タグサイズ
+	if (memcmp(header, ID3V2_TAG, MP3_TAG_SIZE) == CMP_MATCH)
+	{
+		// ID3v2ヘッダー情報解析
+		/*-----------------
+		* [拡張ヘッダ]のデータサイズについて
+		*  [タグサイズ]のデータ構造
+		*    [0AAAAAAA][0BBBBBBB][0CCCCCCD][0DDDDDDD]
+		*  実際のデータサイズ
+		*	 0x0000AAAAAAABBBBBBBCCCCCCCDDDDDDD
+		*
+		* - データの最上位ビットは必ず0
+		*	実際のサイズは、0を省いて詰めたもの
+		*-----------------*/
+		DWORD exHeaderSize = 
+			(header[6] << 21) |
+			(header[7] << 14) |
+			(header[8] << 7) |
+			(header[9] << 0);
+		pFormat->offset = exHeaderSize + ID3V2_HEADER_SIZE; // MP3データのオフセット
+		pFormat->dataSize = fileSize - pFormat->offset; // MP3データのサイズ
+	}
+	else
+	{
+		// ID3v1フッター情報解析
+		const BYTE ID3V1_FOOTER_SIZE = 128; // ID3v1フッターサイズ
+		BYTE tag[MP3_TAG_SIZE]; // タグ情報
+		SetFilePointer(hFile, fileSize - ID3V1_FOOTER_SIZE, NULL, FILE_BEGIN); // ファイル末尾へ移動
+		ReadFile(hFile, tag, MP3_TAG_SIZE, &readSize, NULL); // タグ情報の読み込み
+		pFormat->offset = 0; // MP3データのオフセット
+		if (memcmp(tag, ID3V1_TAG, MP3_TAG_SIZE) == CMP_MATCH)
+		{
+			pFormat->dataSize = fileSize - 128; // MP3データのサイズ
+		}
+		else
+		{
+			pFormat->dataSize = fileSize; // MP3データのサイズ
+		}
+	}
+
+	return pFormat->dataSize; // データサイズを返す
 }
 
 DWORD ReadMP3FrameHeader(HANDLE hFile, DWORD seek, Sound::MP3FrameInfo* pFrame)
