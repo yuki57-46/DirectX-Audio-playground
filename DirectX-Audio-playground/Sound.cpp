@@ -463,8 +463,117 @@ DWORD ReadMP3Format(HANDLE hFile, Sound::MP3FormatInfo* pFormat)
 	return pFormat->dataSize; // データサイズを返す
 }
 
+/**
+ * @brief MP3フレームヘッダの読み込み
+ * @param[in] hFile ファイルハンドル
+ * @param[in] seek フレーム読み込み位置
+ * @param[out] pFrame フレーム情報
+ * @return 読み込みサイズ
+ */
 DWORD ReadMP3FrameHeader(HANDLE hFile, DWORD seek, Sound::MP3FrameInfo* pFrame)
 {
+	DWORD readSize; // 読み込みサイズ
+
+	// フレームヘッダから情報を取得
+	/*-----------------
+	* フレームヘッダの構造
+	* [フレームヘッダ(4byte)][データ]
+	* [フレームヘッダ(4byte)][データ]	
+	* [フレームヘッダ(4byte)][データ]
+	* ...(繰り返し)
+	*-----------------*/
+	// MP3データ位置へ移動
+	SetFilePointer(hFile, seek, NULL, FILE_BEGIN);
+
+	/*-----------------
+	* フレームヘッダ情報
+	* https://web.archive.org/web/20200208193543/cactussoft.co.jp/Sarbo/divMPeg3UnmanageHeader.html
+	* [AAAAAAAA][AAABBCCD][EEEEFFGH][IIJJKLMM]
+	* A: 同期ビット(必ず1)
+	* B: MP3のバージョン
+	*   00: MPEG Version 2.5 (無効)
+	*   01: 予約
+	*   10: MPEG Version 2 (無効)
+	*   11: MPEG Version 1
+	* C: レイヤー
+	*   00: 予約
+	*   01: Layer III
+	*   10: Layer II
+	*   11: Layer I
+	* D: CRCフラグ
+	*   0: 16bit CRC誤り検出の支援
+	*   1: CRCなし
+	* E: ビットレート
+	* F: サンプリングレート
+	* G: パディング(フレームの最後のデータが0xFFだった場合、
+				次のフレームの先頭とつながるため、フレームの最後にNULLを挿入させる
+				実際にデータが挿入されたかどうかの情報を持つ)
+	* H: 拡張(未使用)
+	* I: チャンネルモード
+	*   00: ステレオ
+	*   01: ジョイントステレオ(ステレオ)
+	*   10: デュアルチャンネル(ステレオ)
+	*   11: モノラル
+	* J: 拡張
+	* K: 著作権の有無
+	*   0: 著作権なし
+	*   1: 著作権あり
+	* L: オリジナル/コピー
+	*   0: オリジナルからコピーされたメディア
+	*   1: オリジナルのメディア
+	* M: 強調
+	*   00: 強調なし
+	*   01: 50/15ms 強調
+	*   10: 未使用
+	*   11: CCIT J.17 強調
+	*
+	* - 最低限必要な情報は B, C, E, F, G, I
+	*/
+	const BYTE FRAME_HEADER_SIZE = 4; // フレームヘッダサイズ
+	BYTE frameHeader[FRAME_HEADER_SIZE]; // フレームヘッダ
+	ReadFile(hFile, frameHeader, FRAME_HEADER_SIZE, &readSize, NULL); // フレームヘッダの読み込み
+
+	// 同期ビットのチェック
+	if(!(frameHeader[0] == 0xFF && (frameHeader[1] & 0xE0) == 0xE0))
+	{
+		return 0; // 読み込み失敗
+	}
+
+	// バージョン
+	BYTE version = (frameHeader[1] >> 3) & 0b11;
+
+	// レイヤー
+	BYTE layer = (frameHeader[1] >> 1) & 0b11;
+
+	// ビットレート(単位: kbps (kbit/s))
+	const int bitRateTable[][16] = {
+		// MPEG 1, Layer 1
+		{ 0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1 },
+		// MPEG 1, Layer 2
+		{ 0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, -1 },
+		// MPEG 1, Layer 3
+		{ 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1 },
+		// MPEG 2, Layer 1
+		{ 0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, -1 },
+		// MPEG 2/2.5, Layer 2,3
+		{ 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, -1 }
+	};
+	BYTE bitRateTableIndex;	// ビットレートテーブルのインデックス
+	if (version == 0b11)
+	{
+		bitRateTableIndex = 0b11 - layer; // MPEG 1
+	}
+	else if (version == 0b10 && layer == 0b11)
+	{
+		bitRateTableIndex = 3; // MPEG 2, Layer 1
+	}
+	else
+	{
+		bitRateTableIndex = 4; // MPEG 2/2.5
+	}
+	WORD bitRate = bitRateTable[bitRateTableIndex][frameHeader[2] >> 4]; // ビットレート
+
+	// サンプリングレート(単位: Hz)
 	return 0;
 }
 
