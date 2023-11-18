@@ -574,10 +574,122 @@ DWORD ReadMP3FrameHeader(HANDLE hFile, DWORD seek, Sound::MP3FrameInfo* pFrame)
 	WORD bitRate = bitRateTable[bitRateTableIndex][frameHeader[2] >> 4]; // ビットレート
 
 	// サンプリングレート(単位: Hz)
-	return 0;
+	const int samplingRateTable[][4] = {
+		// MPEG 1
+		{ 44100, 48000, 32000, -1 },
+		// MPEG 2
+		{ 22050, 24000, 16000, -1 },
+		// MPEG 2.5
+		{ 11025, 12000, 8000, -1 }
+	};
+	BYTE samplingRateTableIndex; // サンプリングレートテーブルのインデックス
+	switch (version)
+	{
+	case 0b00:
+		samplingRateTableIndex = 2; // MPEG 2.5
+		break;
+	case 0b10:
+		samplingRateTableIndex = 1; // MPEG 2
+		break;
+	case 0b11:
+		samplingRateTableIndex = 0; // MPEG 1
+		break;
+	default:
+		return E_FAIL; // 読み込み失敗
+	}
+	WORD samplingRate = samplingRateTable[samplingRateTableIndex][(frameHeader[2] >> 2) & 0b11]; // サンプリングレート
+
+	// パディング
+	BYTE padding = (frameHeader[2] >> 1) & 0b01;
+
+	// チャンネル
+	BYTE channel = frameHeader[3] >> 6;
+
+	// フレームサイズ
+	// ビットレートはkbps(kbit/sec)なので、bps(bit/sec)に変換するために1000倍する
+	const int samplePerFrame[][4] =
+	{
+		// layer 1
+		{ 384, 384, 384, -1 },
+		// layer 2
+		{ 1152, 1152, 1152, -1 },
+		// layer 3
+		{ 1152, 576, 576, -1 }
+	};
+	WORD frameBlockSize = ((samplePerFrame[0b11 -layer][samplingRateTableIndex] * bitRate * 1000 / 8) / samplingRate) + padding; // フレームサイズ
+
+	// 取得した情報をもとにMPEGLAYER3WAVEFORMATにデータ設定
+	/*-----------------
+	 * MPEGLAYER3WAVEFORMAT 役割: MP3フォーマットを扱う
+	 * https://web.archive.org/web/20200220093522/cactussoft.co.jp/Sarbo/divMPeg3UnmanageStruct.html
+	 * - mpegオーディオレイヤー3(mp3)を扱うために拡張されたWAVEFORMAT構造体
+	 * .wfx.cbsize 			役割: 構造体の拡張サイズ, MPEGLAYER3_WFX_EXTRA_BYTESを指定
+	 * .wfx.nChannels 		役割: チャンネル数 (1: モノラル, 2: ステレオ)
+	 * .wfx.wFormatTag 		役割: mp3を表す, WAVE_FORMAT_MPEGLAYER3を指定
+	 * .wfx.nBlockAlign 	役割: 1を指定
+	 * .wfx.wBitsPerSample 	役割: 0を指定
+	 * .wfx.nSamplesPerSec 	役割: サンプリングレート
+	 * .wfx.nAvgBytesPerSec 役割: 1秒間に消費するデータサイズを指定。ビットレートを8で割った値になる
+	 * wID 					--: MPEGLAYER3_ID_MPEGを指定
+	 * fdwFlags				役割: パディングを挿入があれば指定 (MPEGLAYER3_FLAG_PADDING_ISO : 必要に応じてパディングを挿入 , MPEGLAYER3_FLAG_PADDING_ON : 常にパディングを挿入 , MPEGLAYER3_FLAG_PADDING_OFF : パディングを挿入しない)
+	 * nFramesPerBlock		役割: 1つのブロックに配置するフレーム数を指定
+	 * nBlockSize			役割: ブロックサイズの指定 (フレームサイズ * フレーム数)
+	 * nCodecDelay			--: 1393(0x571)を指定
+	 * -----------------*/
+	
+	// channel
+	// samplerate
+	// bitrate
+	// padding
+	// frameBlockSize
+	pFrame->channel = channel == 0x11 ? 1 : 2; // チャンネル数 (1: モノラル, 2: ステレオ)
+	pFrame->sampleRate = samplingRate; // サンプリングレート
+	pFrame->bitRate = bitRate; // ビットレート
+	pFrame->padding = padding; // パディング
+	pFrame->frameSize = frameBlockSize; // フレームサイズ
+
+	return pFrame->frameSize; // 読み込みサイズを返す
 }
 
+/**
+ * @brief MP3サウンドデータの読み込み
+ * @param[in] hFile ファイルポインタ
+ * @param[in] seek フレーム読み込み位置
+ * @param[in] size 読み込みサイズ
+ * @param[in] pFrame フレーム情報
+ * @param[out] pData サウンドデータ
+ * @return 読み込みサイズ
+ */
 DWORD ReadMP3Data(HANDLE hFile, DWORD seek, DWORD size, Sound::MP3FrameInfo* pFrame, Sound::SoundData* pData)
 {
+	// 変換フォーマット作成
+	MPEGLAYER3WAVEFORMAT mp3WaveFormat; // MP3フォーマット
+	mp3WaveFormat.wfx.cbSize = MPEGLAYER3_WFX_EXTRA_BYTES; // 拡張サイズ
+	mp3WaveFormat.wfx.nChannels = pFrame->channel; // チャンネル数
+	mp3WaveFormat.wfx.wFormatTag = WAVE_FORMAT_MPEGLAYER3; // mp3を表す
+	mp3WaveFormat.wfx.nBlockAlign = 1; // 1を指定
+	mp3WaveFormat.wfx.wBitsPerSample = 0; // 0を指定
+	mp3WaveFormat.wfx.nSamplesPerSec = pFrame->sampleRate; // サンプリングレート
+	mp3WaveFormat.wfx.nAvgBytesPerSec = (pFrame->bitRate * 1000) / 8; // 1秒間に消費するデータサイズを指定。ビットレートを8で割った値になる
+
+	// フォーマットを指定し、ソースを作成
+	mp3WaveFormat.wID = MPEGLAYER3_ID_MPEG; // MPEGLAYER3_ID_MPEGを指定
+	mp3WaveFormat.fdwFlags = pFrame->padding ? MPEGLAYER3_FLAG_PADDING_ON : MPEGLAYER3_FLAG_PADDING_OFF; // パディングを挿入があれば指定 (MPEGLAYER3_FLAG_PADDING_ISO : 必要に応じてパディングを挿入 , MPEGLAYER3_FLAG_PADDING_ON : 常にパディングを挿入 , MPEGLAYER3_FLAG_PADDING_OFF : パディングを挿入しない)
+	mp3WaveFormat.nFramesPerBlock = 1; // 1つのブロックに配置するフレーム数を指定
+	mp3WaveFormat.nBlockSize = static_cast<WORD>(pFrame->frameSize * mp3WaveFormat.nFramesPerBlock); // ブロックサイズの指定 (フレームサイズ * フレーム数)
+	mp3WaveFormat.nCodecDelay = 0x571; // 1393(0x571)を指定
+
+	// mp3をwavに変換可能かチェック
+	// 可能であれば、wavFormatへデータを設定
+	WAVEFORMATEX wavFormat; // wavフォーマット
+	wavFormat.wFormatTag = WAVE_FORMAT_PCM; // PCMを指定
+	MMRESULT mmr; // 処理結果
+	mmr = acmFormatSuggest(NULL, &mp3WaveFormat.wfx, &wavFormat, sizeof(WAVEFORMAT), ACM_FORMATSUGGESTF_WFORMATTAG); // 変換可能かチェック
+	if (mmr != MMSYSERR_NOERROR) // 変換不可
+	{
+		return 0; // 読み込み失敗
+	}
+
+	
 	return 0;
 }
