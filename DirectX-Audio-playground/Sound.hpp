@@ -41,7 +41,8 @@ public:
         WAVEFORMATEX    format; // WAVフォーマット
         BYTE            *pBuffer; // サウンドデータ
         DWORD           bufSize; // データサイズ
-        XAUDIO2_BUFFER  sound;
+        XAUDIO2_BUFFER  sound;  // サウンドバッファ
+        IXAudio2SourceVoice* pSource; // サウンドソース
     };
     
     struct MP3FormatInfo
