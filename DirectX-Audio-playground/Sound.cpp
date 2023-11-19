@@ -54,7 +54,7 @@ HRESULT Sound::Init()
 	HRESULT hr = E_FAIL;
 
 	// COMオブジェクト初期化
-	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 	{
 		return hr;
@@ -84,12 +84,12 @@ void Sound::Uninit()
 {
 	SoundList::iterator soundIt = g_soundList.begin(); // サウンドリストの先頭を取得
 
-	// サウンドリストの末尾までループ
-	while (soundIt != g_soundList.end())
-	{
-		delete[] soundIt->second.pBuffer; // サウンドデータの解放
-		soundIt++; // 次のサウンドデータへ
-	}
+	//// サウンドリストの末尾までループ
+	//while (soundIt != g_soundList.end())
+	//{
+	//	delete[] soundIt->second.pBuffer; // サウンドデータの解放
+	//	soundIt++; // 次のサウンドデータへ
+	//}
 
 	if (m_pMasteringVoice != NULL)
 	{
@@ -127,11 +127,11 @@ XAUDIO2_BUFFER* Sound::LoadSound(const char* file, bool loop)
 	LPSTR ext = PathFindExtension(file); // ファイルパスから拡張子を取得
 	if (ext != NULL)
 	{
-		if(memcmp(ext, ".wav", 4) == CMP_MATCH) // wavファイルの場合
+		if(memcmp(ext, ".wav", 4) == 0) // wavファイルの場合
 		{
 			hr = LoadWave(file, &data); // wavファイルの読み込み
 		} 
-		else if (memcmp(ext, "mp3", 4) == CMP_MATCH) // mp3ファイルの場合
+		else if (memcmp(ext, ".mp3", 4) == 0) // mp3ファイルの場合
 		{
 			hr = LoadMP3(file, &data); // mp3ファイルの読み込み
 		}
@@ -214,7 +214,7 @@ IXAudio2SourceVoice* Sound::PlaySound(XAUDIO2_BUFFER* pSound)
 IXAudio2SourceVoice* Sound::StopSound(XAUDIO2_BUFFER* pSound)
 {
 	HRESULT hr;	// 処理結果
-	IXAudio2SourceVoice* pSource;	// ソース
+	//IXAudio2SourceVoice* pSource = NULL;	// ソース
 
 	// 停止させるデータを探索
 	SoundList::iterator soundIt = g_soundList.begin(); // サウンドリストの先頭を取得
@@ -222,6 +222,10 @@ IXAudio2SourceVoice* Sound::StopSound(XAUDIO2_BUFFER* pSound)
 	{
 		if (&soundIt->second.sound == pSound) // サウンドバッファが一致した場合
 		{
+			//pSource = soundIt->second.pSource; // ソースを取得
+			
+			// 停止
+			pSound->pAudioData = NULL;
 			break; // ループを抜ける
 		}
 		++soundIt; // 次のサウンドデータへ
@@ -233,9 +237,9 @@ IXAudio2SourceVoice* Sound::StopSound(XAUDIO2_BUFFER* pSound)
 	}
 
 	// 停止
-	pSource->Stop();
+	//pSource->Stop();
 
-	return pSource;	
+	return NULL;
 }
 
 void Sound::PauseSound(IXAudio2SourceVoice* pSourceVoice)
@@ -684,7 +688,7 @@ DWORD ReadMP3Data(HANDLE hFile, DWORD seek, DWORD size, Sound::MP3FrameInfo* pFr
 	WAVEFORMATEX wavFormat; // wavフォーマット
 	wavFormat.wFormatTag = WAVE_FORMAT_PCM; // PCMを指定
 	MMRESULT mmr; // 処理結果
-	mmr = acmFormatSuggest(NULL, &mp3WaveFormat.wfx, &wavFormat, sizeof(WAVEFORMAT), ACM_FORMATSUGGESTF_WFORMATTAG); // 変換可能かチェック
+	mmr = acmFormatSuggest(NULL, &mp3WaveFormat.wfx, &wavFormat, sizeof(WAVEFORMATEX), ACM_FORMATSUGGESTF_WFORMATTAG); // 変換可能かチェック
 	if (mmr != MMSYSERR_NOERROR) // 変換不可
 	{
 		return 0; // 読み込み失敗
