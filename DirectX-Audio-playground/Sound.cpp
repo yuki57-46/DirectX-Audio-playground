@@ -690,6 +690,46 @@ DWORD ReadMP3Data(HANDLE hFile, DWORD seek, DWORD size, Sound::MP3FrameInfo* pFr
 		return 0; // 読み込み失敗
 	}
 
-	
-	return 0;
+	// ACMストリームを開く
+	// mp3をwavへフォーマット変換
+	HACMSTREAM has; // ACMストリーム
+	mmr = acmStreamOpen(&has, NULL, &mp3WaveFormat.wfx, &wavFormat, NULL, NULL, NULL, 0); // ACMストリームを開く
+
+	// MP3のブロックサイズからWAVE形式へデコード後のサイズを取得
+	DWORD waveBlockSize; // WAVE形式のブロックサイズ
+	acmStreamSize(has, size, &waveBlockSize, ACM_STREAMSIZEF_SOURCE); // WAVE形式のブロックサイズを取得
+
+	// 変換データセット
+	ACMSTREAMHEADER ash = { 0 }; // ACMストリームヘッダ
+	ash.cbStruct = sizeof(ACMSTREAMHEADER); // 構造体サイズ
+	ash.cbSrcLength = size; // 変換元データサイズ
+	ash.pbSrc = new BYTE[ash.cbSrcLength]; // 変換元データ
+	ash.cbDstLength = waveBlockSize; // 変換後データサイズ
+	ash.pbDst = new BYTE[ash.cbDstLength]; // 変換後データ
+
+	// デコード
+	acmStreamPrepareHeader(has, &ash, 0); // ヘッダーの準備
+	DWORD readSize; // 読み込みサイズ
+	SetFilePointer(hFile, seek, NULL, FILE_BEGIN); // ファイルポインタを移動
+	ReadFile(hFile, ash.pbSrc, ash.cbSrcLength, &readSize, NULL); // ファイルからデータを読み込む
+	mmr = acmStreamConvert(has, &ash, 0); // デコード
+	acmStreamUnprepareHeader(has, &ash, 0); // ヘッダーの解放
+	acmStreamClose(has, 0); // ACMストリームを閉じる
+
+	// wavデータコピー
+	if (ash.cbDstLengthUsed > 0)
+	{
+		pData->bufSize = ash.cbDstLengthUsed; // データサイズ
+		pData->pBuffer = new BYTE[pData->bufSize]; // データサイズ分のメモリを確保
+		pData->format = wavFormat; // フォーマット
+		memcpy_s(pData->pBuffer, pData->bufSize, ash.pbDst, ash.cbDstLengthUsed); // データをコピー
+	}
+
+	// メモリ解放
+	delete[] ash.pbSrc; // 変換元データ
+	delete[] ash.pbDst; // 変換後データ
+
+	CloseHandle(hFile); // ファイルを閉じる
+
+	return ash.cbDstLengthUsed; // 読み込みサイズを返す
 }
