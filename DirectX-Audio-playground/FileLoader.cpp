@@ -4,6 +4,8 @@
 //
 #include "FileLoader.hpp"
 
+Sound g_Sound; // サウンドクラスのインスタンス
+
 // 定数宣言
 LPCSTR OpenFileWindowTitle = "FilePath";
 
@@ -14,11 +16,14 @@ FileLoader::FileLoader()
     : m_pFileOpenDialog(NULL)
     , m_filePath()
 {
+    g_Sound.Init(); // サウンドクラスの初期化
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
 }
 
 FileLoader::~FileLoader()
 {
+    g_Sound.Uninit(); // サウンドクラスの終了
     CoUninitialize();
 }
 
@@ -54,6 +59,10 @@ void FileLoader::OpenFile(HWND hWnd)
                     // ファイルパスを表示
                     LPCSTR lpFilePath = ConvertPWSTRtoLPCSTR(filePath);  // ファイルパスをLPCSTRに変換
                     MessageBoxA(hWnd, lpFilePath, OpenFileWindowTitle, MB_OK);
+                    m_pSound = g_Sound.LoadSound(lpFilePath, false); // サウンドファイルの読み込み
+                    m_pSourceVoice = g_Sound.PlaySound(m_pSound); // サウンドの再生
+
+
 
                     delete[] lpFilePath; // メモリ解放
                     CoTaskMemFree(filePath); // メモリ解放
@@ -62,6 +71,8 @@ void FileLoader::OpenFile(HWND hWnd)
                 pItem->Release(); // メモリ解放
             }
         }
+
+        m_pSourceVoice = g_Sound.StopSound(m_pSound); // サウンドの停止
 
         pFileOpen->Release(); // メモリ解放
     }
@@ -92,9 +103,13 @@ void FileLoader::LoadDropFile(HWND hWnd, HDROP hDrop)
         // ここでファイルの処理を行う
         // ファイルパスを表示
         MessageBoxA(hWnd, lpFilePath, OpenFileWindowTitle, MB_OK);
+        m_pSound = g_Sound.LoadSound(lpFilePath, false); // サウンドファイルの読み込み
+        g_Sound.PlaySound(m_pSound);
 
         delete[] filePath; // メモリ解放
-    }  
+    }
+
+    g_Sound.StopSound(m_pSound); // サウンドの停止
 
     DragFinish(hDrop); // メモリ解放
 }

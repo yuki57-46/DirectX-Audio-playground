@@ -1,4 +1,4 @@
-﻿// 
+// 
 // File: FileLoader.h
 // ファイルを読み込むクラス
 //
@@ -6,6 +6,7 @@
 
 #include <Windows.h>
 #include <ShObjIdl.h> // IFileOpenDialog(ファイル選択ダイアログ)を使うために必要
+#include "Sound.hpp"
 
 class FileLoader
 {
@@ -28,6 +29,7 @@ private:
     // ファイルパス
     wchar_t m_filePath[MAX_PATH];
     
+    IXAudio2SourceVoice* m_pSourceVoice;
+    XAUDIO2_BUFFER* m_pSound;
 
 };
-

@@ -6,6 +6,7 @@ XAudio2を使ってどのようなことが出来るのかを試すためのリ�
 
 ## 環境
 
+- Visual Studio 2017 Communityでも動作するようにしていますが、C++17に対応していないため、Visual Studio 2022 Communityを推奨します。
 - Visual Studio 2022 Community
 - Windows 11 Pro 22H2
 - Windows SDK 10.0.22621.0
