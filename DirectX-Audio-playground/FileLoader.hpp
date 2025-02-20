@@ -29,7 +29,7 @@ private:
     // ファイルパス
     wchar_t m_filePath[MAX_PATH];
     
-    IXAudio2SourceVoice* m_pSourceVoice;
-    XAUDIO2_BUFFER* m_pSound;
+    IXAudio2SourceVoice* m_pSourceVoice; // サウンドソース
+    XAUDIO2_BUFFER* m_pSound; // サウンドバッファ
 
 };

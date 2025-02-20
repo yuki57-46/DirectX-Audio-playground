@@ -84,12 +84,12 @@ void Sound::Uninit()
 {
 	SoundList::iterator soundIt = g_soundList.begin(); // サウンドリストの先頭を取得
 
-	//// サウンドリストの末尾までループ
-	//while (soundIt != g_soundList.end())
-	//{
-	//	delete[] soundIt->second.pBuffer; // サウンドデータの解放
-	//	soundIt++; // 次のサウンドデータへ
-	//}
+	// サウンドリストの末尾までループ
+	while (soundIt != g_soundList.end())
+	{
+		delete[] soundIt->second.pBuffer; // サウンドデータの解放
+		soundIt++; // 次のサウンドデータへ
+	}
 
 	if (m_pMasteringVoice != NULL)
 	{
